@@ -19,8 +19,20 @@ export function useMicrophone() {
           autoGainControl: true,
         },
       })
+      const [audioTrack] = stream.getAudioTracks()
+console.log('initial muted state:', audioTrack.muted)
+console.log('track state:', audioTrack.readyState)
+
+audioTrack.onmute = () => console.log('track muted at hardware/OS level')
+audioTrack.onunmute = () => console.log('track unmuted')
+
+const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+console.log(result.state) // 'granted' | 'denied' | 'prompt'
+result.onchange = () => console.log('permission changed to', result.state)
+
       streamRef.current = stream
       setStatus('granted')
+  
     } catch (err) {
       if (err instanceof DOMException) {
         if (err.name === 'NotAllowedError') {
