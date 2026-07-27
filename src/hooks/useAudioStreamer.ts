@@ -2,8 +2,15 @@ import { useRef, useCallback, useState } from 'react'
 
 type StreamStatus = 'idle' | 'connecting' | 'streaming' | 'error'
 
+export interface Caption {
+  transcript: string
+  speaker: number | null
+  isFinal: boolean
+}
+
 export function useAudioStreamer(stream: MediaStream | null) {
   const [status, setStatus] = useState<StreamStatus>('idle')
+  const [captions, setCaptions] = useState<Caption[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
 
@@ -31,6 +38,22 @@ export function useAudioStreamer(stream: MediaStream | null) {
       recorder.start(1000) // fire dataavailable every 1000ms
     }
 
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      setCaptions((prev) => {
+        // Replace the last caption if it was an interim result being updated,
+        // otherwise append a new one.
+        const last = prev[prev.length - 1]
+        if (last && !last.isFinal) {
+          return [
+            ...prev.slice(0, -1),
+            { transcript: data.transcript, speaker: data.speaker, isFinal: data.is_final },
+          ]
+        }
+        return [...prev, { transcript: data.transcript, speaker: data.speaker, isFinal: data.is_final }]
+      })
+    }
+
     ws.onerror = () => {
       setStatus('error')
     }
@@ -48,5 +71,5 @@ export function useAudioStreamer(stream: MediaStream | null) {
     setStatus('idle')
   }, [])
 
-  return { status, startStreaming, stopStreaming }
+  return { status, captions, startStreaming, stopStreaming }
 }
