@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import websockets
+from websockets.exceptions import ConnectionClosed
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
