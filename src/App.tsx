@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMicrophone } from './hooks/useMicrophone'
 import { useAudioVisualizer } from './hooks/useAudioVisualizer'
 import { useAudioStreamer } from './hooks/useAudioStreamer'
@@ -10,13 +10,20 @@ function App() {
   useAudioVisualizer(stream, canvasRef)
 
   const { status: streamStatus, captions, startStreaming, stopStreaming } = useAudioStreamer(stream)
-  //                              ^^^^^^^^ NEW — pulling captions out of the hook now
+
+  // NEW — sentinel ref at the bottom of the captions list, and an effect
+  // that scrolls to it every time `captions` changes (new caption arrives,
+  // or an interim one updates in place).
+  const captionsEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [captions])
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center gap-4">
       <h1 className="text-2xl font-semibold">Live Captions</h1>
       <p>Mic: <span className="font-mono">{status}</span> | Stream: <span className="font-mono">{streamStatus}</span></p>
-      {/* NEW — showing streamStatus too, you had it in the hook but weren't displaying it */}
       {errorMessage && <p className="text-red-400">{errorMessage}</p>}
 
       <canvas ref={canvasRef} width={500} height={150} className="rounded border border-slate-700" />
@@ -36,7 +43,6 @@ function App() {
         </button>
       </div>
 
-      {/* NEW — the caption feed itself */}
       <div className="w-full max-w-xl bg-slate-800 rounded p-4 h-64 overflow-y-auto flex flex-col gap-2">
         {captions.map((c, i) => (
           <p key={i} className={c.isFinal ? 'text-white' : 'text-slate-400 italic'}>
@@ -44,6 +50,8 @@ function App() {
             {c.transcript}
           </p>
         ))}
+        {/* NEW — empty sentinel div, this is what we scroll into view */}
+        <div ref={captionsEndRef} />
       </div>
     </div>
   )
