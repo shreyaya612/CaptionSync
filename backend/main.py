@@ -61,20 +61,32 @@ async def audio_stream(client_ws: WebSocket):
                     async for message in dg_ws:
                         data = json.loads(message)
                         alt = data.get("channel", {}).get("alternatives", [{}])[0]
-                        transcript = alt.get("transcript", "")
-                        if not transcript:
+                        words = alt.get("words", "")
+                        is_final = data.get("is_final", False)
+
+                        if not words:
                             continue
+                        
+                        segments = []
+                        current_speaker = words[0].get("speaker")
+                        current_words = [words[0].get("punctuated_word") or words[0].get("word")]
 
-                        speaker = None
-                        words = alt.get("words", [])
-                        if words:
-                            speaker = words[0].get("speaker")
-
-                        await client_ws.send_json({
-                            "transcript": transcript,
-                            "speaker": speaker,
-                            "is_final": data.get("is_final", False),
-                        })
+                        for w in words[1:]:
+                             spk = w.get("speaker")
+                             token = w.get("punctuated_word") or w.get("word")
+                             if spk == current_speaker:
+                                 current_words.append(token)
+                             else:
+                                 segments.append((current_speaker, " ".join(current_words)))
+                                 current_speaker = spk
+                                 current_words = [token]
+                        segments.append((current_speaker, " ".join(current_words)))
+                        for speaker, text in segments:
+                            await client_ws.send_json({
+                                "transcript": text,
+                                "speaker": speaker,
+                                "is_final": is_final,
+                            })
                 except ConnectionClosed:
                     print("Deepgram connection closed")
 

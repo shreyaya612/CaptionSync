@@ -26,6 +26,8 @@ export function useAudioStreamer(stream: MediaStream | null) {
 
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000,
+
       })
       recorderRef.current = recorder
 
